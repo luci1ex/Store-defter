@@ -480,6 +480,18 @@ function renderSection() {
   if (activeSection === "totals") {
     content.innerHTML = `
       <div class="card grandCard">
+        <h3>الرصيد القابل للتصفية</h3>
+        <div class="profitPreview" style="margin:0 0 14px;">
+          <span>منذ آخر تصفية</span>
+          <b id="settleBalance" class="pos">0</b>
+        </div>
+        <button class="btn" id="settleBtn">تصفية الأرباح الحين</button>
+      </div>
+      <div class="card">
+        <h3>سجل التصفيات</h3>
+        <div id="settleLog">جاري التحميل...</div>
+      </div>
+      <div class="card grandCard">
         <h3>ربح الشهر الحالي — <span id="curMonthLabel"></span></h3>
         <div id="grandBox">جاري التحميل...</div>
       </div>
@@ -728,16 +740,44 @@ function renderGrandTotals() {
   const sectionWeekly = {};  // sectionId -> { weekKey: {sum,count} }
   const sectionDaily = {};   // sectionId -> { dayKey: {sum,count} }
   const sectionCurMonth = {}; // sectionId -> {sum,count,label}
+  const sectionRaw = {};     // sectionId -> [{profit, dt}]
+  let settlements = [];
+  let lastSettledAt = null;
+
+  const settleQ = query(collection(db, "settlements"), orderBy("settledAt", "desc"));
+  const settleUnsub = onSnapshot(settleQ, (snap) => {
+    settlements = [];
+    snap.forEach(d => settlements.push({ id: d.id, ...d.data() }));
+    lastSettledAt = settlements[0]?.settledAt?.toDate ? settlements[0].settledAt.toDate() : null;
+    draw();
+  });
+  unsubs.push(settleUnsub);
+
+  document.getElementById("settleBtn").addEventListener("click", async () => {
+    const allRaw = Object.values(sectionRaw).flat();
+    const pending = allRaw.filter(o => !lastSettledAt || o.dt > lastSettledAt);
+    const amount = pending.reduce((s, o) => s + o.profit, 0);
+    if (pending.length === 0) { alert("ماكو ربح جديد للتصفية"); return; }
+    if (!confirm(`راح تصفّي مبلغ ${amount.toLocaleString()} من ${pending.length} طلب. متأكد؟`)) return;
+    await addDoc(collection(db, "settlements"), {
+      amount,
+      ordersCount: pending.length,
+      settledBy: currentUser.email,
+      settledAt: serverTimestamp()
+    });
+  });
 
   SECTIONS.forEach(s => {
     const q = query(collection(db, "orders"), where("section", "==", s.id));
     const unsub = onSnapshot(q, (snap) => {
       const monthly = {}, weekly = {}, daily = {};
+      const raw = [];
       let curSum = 0, curCount = 0;
       snap.forEach(d => {
         const data = d.data();
         const dt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
         if (!dt) return;
+        raw.push({ profit: data.profit || 0, dt });
         const mKey = monthKeyOf(dt);
         if (!monthly[mKey]) monthly[mKey] = { sum: 0, count: 0 };
         monthly[mKey].sum += data.profit || 0;
@@ -758,6 +798,7 @@ function renderGrandTotals() {
       sectionMonthly[s.id] = monthly;
       sectionWeekly[s.id] = weekly;
       sectionDaily[s.id] = daily;
+      sectionRaw[s.id] = raw;
       sectionCurMonth[s.id] = { sum: curSum, count: curCount, label: s.label };
       draw();
     });
@@ -779,6 +820,25 @@ function renderGrandTotals() {
   }
 
   function draw() {
+    const allRaw = Object.values(sectionRaw).flat();
+    const pending = allRaw.filter(o => !lastSettledAt || o.dt > lastSettledAt);
+    const balance = pending.reduce((s, o) => s + o.profit, 0);
+    const balEl = document.getElementById("settleBalance");
+    if (balEl) {
+      balEl.textContent = balance.toLocaleString();
+      balEl.className = balance >= 0 ? "pos" : "neg";
+    }
+
+    const settleLogBox = document.getElementById("settleLog");
+    if (settleLogBox) {
+      settleLogBox.innerHTML = settlements.length === 0 ? `<div class="emptyState">ماكو تصفيات بعد</div>` :
+        settlements.map(st => {
+          const dt = st.settledAt?.toDate ? st.settledAt.toDate() : null;
+          const label = dt ? dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long", year: "numeric" }) : "";
+          return `<div class="grandRow"><span>${label} — ${st.ordersCount} طلب — ${escapeHtml(st.settledBy || "")}</span><b>${st.amount.toLocaleString()}</b></div>`;
+        }).join("");
+    }
+
     let curHtml = "";
     let grandCur = 0;
     SECTIONS.forEach(s => {
