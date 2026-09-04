@@ -478,7 +478,16 @@ function renderSection() {
   if (unsubscribeOrders) unsubscribeOrders();
 
   if (activeSection === "totals") {
-    content.innerHTML = `<div class="card grandCard"><h3>الربح الإجمالي لكل الأقسام</h3><div id="grandBox">جاري التحميل...</div></div>`;
+    content.innerHTML = `
+      <div class="card grandCard">
+        <h3>ربح الشهر الحالي — <span id="curMonthLabel"></span></h3>
+        <div id="grandBox">جاري التحميل...</div>
+      </div>
+      <div class="card">
+        <h3>السجل الشهري</h3>
+        <div id="monthlyLog">جاري التحميل...</div>
+      </div>
+    `;
     renderGrandTotals();
     return;
   }
@@ -516,6 +525,11 @@ function renderSection() {
     <div class="totalsBar" id="sectionTotals">
       <div><b id="totalCount">0</b>عدد الطلبات</div>
       <div><b id="totalProfit">0</b>مجموع الربح</div>
+    </div>
+
+    <div class="card">
+      <h3>الربح حسب اليوم</h3>
+      <div id="dailyBreakdown"></div>
     </div>
 
     <div id="orderList"></div>
@@ -578,6 +592,17 @@ function subscribeToOrders(section) {
   });
 }
 
+function dayKeyOf(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+}
+function monthKeyOf(date) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+}
+function monthLabelOf(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m - 1, 1).toLocaleDateString("ar-IQ", { month: "long", year: "numeric" });
+}
+
 function renderOrderList(section) {
   const listEl = document.getElementById("orderList");
   const totalCountEl = document.getElementById("totalCount");
@@ -587,6 +612,7 @@ function renderOrderList(section) {
   const totalProfit = currentOrders.reduce((sum, o) => sum + (o.profit || 0), 0);
   totalCountEl.textContent = currentOrders.length;
   totalProfitEl.textContent = totalProfit.toLocaleString();
+  renderDailyBreakdown();
 
   if (currentOrders.length === 0) {
     listEl.innerHTML = `<div class="emptyState">ماكو طلبات مسجلة بعد بهذا القسم</div>`;
@@ -620,20 +646,59 @@ function renderOrderList(section) {
   });
 }
 
+function renderDailyBreakdown() {
+  const box = document.getElementById("dailyBreakdown");
+  if (!box) return;
+  const days = {};
+  currentOrders.forEach(o => {
+    const dt = o.createdAt?.toDate ? o.createdAt.toDate() : null;
+    if (!dt) return;
+    const key = dayKeyOf(dt);
+    if (!days[key]) days[key] = { sum: 0, count: 0, dt };
+    days[key].sum += o.profit || 0;
+    days[key].count++;
+  });
+  const keys = Object.keys(days).sort().reverse();
+  if (keys.length === 0) {
+    box.innerHTML = `<div class="emptyState">ماكو بيانات بعد</div>`;
+    return;
+  }
+  box.innerHTML = keys.map(key => {
+    const d = days[key];
+    const label = d.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
+    const isPos = d.sum >= 0;
+    return `<div class="grandRow"><span>${label} (${d.count} طلب)</span><b class="${isPos ? "" : ""}" style="color:${isPos ? "var(--gold)" : "var(--danger)"}">${d.sum.toLocaleString()}</b></div>`;
+  }).join("");
+}
+
 /* ---------------- Grand totals (manager only) ---------------- */
 function renderGrandTotals() {
-  const box = document.getElementById("grandBox");
+  const grandBox = document.getElementById("grandBox");
+  const logBox = document.getElementById("monthlyLog");
+  const curKey = monthKeyOf(new Date());
+  document.getElementById("curMonthLabel").textContent = monthLabelOf(curKey);
+
   const unsubs = [];
-  const totals = {};
-  let grand = 0;
+  const sectionMonthly = {};  // sectionId -> { monthKey: {sum,count} }
+  const sectionCurMonth = {}; // sectionId -> {sum,count,label}
 
   SECTIONS.forEach(s => {
     const q = query(collection(db, "orders"), where("section", "==", s.id));
     const unsub = onSnapshot(q, (snap) => {
-      let sum = 0, count = 0;
-      snap.forEach(d => { sum += d.data().profit || 0; count++; });
-      totals[s.id] = { sum, count, label: s.label };
-      grand = Object.values(totals).reduce((a, t) => a + t.sum, 0);
+      const monthly = {};
+      let curSum = 0, curCount = 0;
+      snap.forEach(d => {
+        const data = d.data();
+        const dt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
+        if (!dt) return;
+        const key = monthKeyOf(dt);
+        if (!monthly[key]) monthly[key] = { sum: 0, count: 0 };
+        monthly[key].sum += data.profit || 0;
+        monthly[key].count++;
+        if (key === curKey) { curSum += data.profit || 0; curCount++; }
+      });
+      sectionMonthly[s.id] = monthly;
+      sectionCurMonth[s.id] = { sum: curSum, count: curCount, label: s.label };
       draw();
     });
     unsubs.push(unsub);
@@ -641,14 +706,36 @@ function renderGrandTotals() {
   unsubscribeOrders = () => unsubs.forEach(u => u());
 
   function draw() {
-    let html = "";
+    let curHtml = "";
+    let grandCur = 0;
     SECTIONS.forEach(s => {
-      const t = totals[s.id];
+      const t = sectionCurMonth[s.id];
       if (!t) return;
-      html += `<div class="grandRow"><span>${t.label} (${t.count} طلب)</span><b>${t.sum.toLocaleString()}</b></div>`;
+      grandCur += t.sum;
+      curHtml += `<div class="grandRow"><span>${t.label} (${t.count} طلب)</span><b>${t.sum.toLocaleString()}</b></div>`;
     });
-    html += `<div class="grandRow" style="border-top:2px solid var(--accent);margin-top:6px;padding-top:12px;"><span>الإجمالي الكلي</span><b>${grand.toLocaleString()}</b></div>`;
-    box.innerHTML = html;
+    curHtml += `<div class="grandRow" style="border-top:2px solid var(--accent);margin-top:6px;padding-top:12px;"><span>إجمالي الشهر</span><b>${grandCur.toLocaleString()}</b></div>`;
+    grandBox.innerHTML = curHtml;
+
+    const allMonths = {};
+    SECTIONS.forEach(s => {
+      const monthly = sectionMonthly[s.id] || {};
+      Object.entries(monthly).forEach(([key, val]) => {
+        if (!allMonths[key]) allMonths[key] = { sum: 0, count: 0 };
+        allMonths[key].sum += val.sum;
+        allMonths[key].count += val.count;
+      });
+    });
+    const keys = Object.keys(allMonths).sort().reverse();
+    if (keys.length === 0) {
+      logBox.innerHTML = `<div class="emptyState">ماكو بيانات بعد</div>`;
+      return;
+    }
+    logBox.innerHTML = keys.map(key => {
+      const t = allMonths[key];
+      const isCur = key === curKey;
+      return `<div class="grandRow"><span>${monthLabelOf(key)}${isCur ? " (الشهر الحالي)" : ""} — ${t.count} طلب</span><b>${t.sum.toLocaleString()}</b></div>`;
+    }).join("");
   }
 }
 
