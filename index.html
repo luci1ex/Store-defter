@@ -487,6 +487,14 @@ function renderSection() {
         <h3>السجل الشهري</h3>
         <div id="monthlyLog">جاري التحميل...</div>
       </div>
+      <div class="card">
+        <h3>السجل الأسبوعي</h3>
+        <div id="weeklyLog">جاري التحميل...</div>
+      </div>
+      <div class="card">
+        <h3>السجل اليومي</h3>
+        <div id="dailyLog">جاري التحميل...</div>
+      </div>
     `;
     renderGrandTotals();
     return;
@@ -530,6 +538,11 @@ function renderSection() {
     <div class="card">
       <h3>الربح حسب اليوم</h3>
       <div id="dailyBreakdown"></div>
+    </div>
+
+    <div class="card">
+      <h3>الربح حسب الأسبوع</h3>
+      <div id="weeklyBreakdown"></div>
     </div>
 
     <div id="orderList"></div>
@@ -595,6 +608,22 @@ function subscribeToOrders(section) {
 function dayKeyOf(date) {
   return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
 }
+function weekStartOf(date) {
+  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  d.setDate(d.getDate() - d.getDay()); // Sunday = start of week
+  return d;
+}
+function weekKeyOf(date) {
+  return dayKeyOf(weekStartOf(date));
+}
+function weekLabelOf(key) {
+  const [y, m, d] = key.split("-").map(Number);
+  const start = new Date(y, m - 1, d);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const opts = { day: "numeric", month: "long" };
+  return `الأسبوع ${start.toLocaleDateString("ar-IQ", opts)} — ${end.toLocaleDateString("ar-IQ", opts)}`;
+}
 function monthKeyOf(date) {
   return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
 }
@@ -647,63 +676,107 @@ function renderOrderList(section) {
 }
 
 function renderDailyBreakdown() {
-  const box = document.getElementById("dailyBreakdown");
-  if (!box) return;
+  const dayBox = document.getElementById("dailyBreakdown");
+  const weekBox = document.getElementById("weeklyBreakdown");
+  if (!dayBox || !weekBox) return;
+
   const days = {};
+  const weeks = {};
   currentOrders.forEach(o => {
     const dt = o.createdAt?.toDate ? o.createdAt.toDate() : null;
     if (!dt) return;
-    const key = dayKeyOf(dt);
-    if (!days[key]) days[key] = { sum: 0, count: 0, dt };
-    days[key].sum += o.profit || 0;
-    days[key].count++;
+    const dKey = dayKeyOf(dt);
+    if (!days[dKey]) days[dKey] = { sum: 0, count: 0, dt };
+    days[dKey].sum += o.profit || 0;
+    days[dKey].count++;
+
+    const wKey = weekKeyOf(dt);
+    if (!weeks[wKey]) weeks[wKey] = { sum: 0, count: 0 };
+    weeks[wKey].sum += o.profit || 0;
+    weeks[wKey].count++;
   });
-  const keys = Object.keys(days).sort().reverse();
-  if (keys.length === 0) {
-    box.innerHTML = `<div class="emptyState">ماكو بيانات بعد</div>`;
-    return;
-  }
-  box.innerHTML = keys.map(key => {
-    const d = days[key];
-    const label = d.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
-    const isPos = d.sum >= 0;
-    return `<div class="grandRow"><span>${label} (${d.count} طلب)</span><b class="${isPos ? "" : ""}" style="color:${isPos ? "var(--gold)" : "var(--danger)"}">${d.sum.toLocaleString()}</b></div>`;
-  }).join("");
+
+  const dayKeys = Object.keys(days).sort().reverse();
+  dayBox.innerHTML = dayKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
+    dayKeys.map(key => {
+      const d = days[key];
+      const label = d.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
+      const color = d.sum >= 0 ? "var(--gold)" : "var(--danger)";
+      return `<div class="grandRow"><span>${label} (${d.count} طلب)</span><b style="color:${color}">${d.sum.toLocaleString()}</b></div>`;
+    }).join("");
+
+  const weekKeys = Object.keys(weeks).sort().reverse();
+  weekBox.innerHTML = weekKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
+    weekKeys.map(key => {
+      const w = weeks[key];
+      const color = w.sum >= 0 ? "var(--gold)" : "var(--danger)";
+      return `<div class="grandRow"><span>${weekLabelOf(key)} (${w.count} طلب)</span><b style="color:${color}">${w.sum.toLocaleString()}</b></div>`;
+    }).join("");
 }
 
 /* ---------------- Grand totals (manager only) ---------------- */
 function renderGrandTotals() {
   const grandBox = document.getElementById("grandBox");
-  const logBox = document.getElementById("monthlyLog");
+  const monthlyLogBox = document.getElementById("monthlyLog");
+  const weeklyLogBox = document.getElementById("weeklyLog");
+  const dailyLogBox = document.getElementById("dailyLog");
   const curKey = monthKeyOf(new Date());
   document.getElementById("curMonthLabel").textContent = monthLabelOf(curKey);
 
   const unsubs = [];
-  const sectionMonthly = {};  // sectionId -> { monthKey: {sum,count} }
+  const sectionMonthly = {}; // sectionId -> { monthKey: {sum,count} }
+  const sectionWeekly = {};  // sectionId -> { weekKey: {sum,count} }
+  const sectionDaily = {};   // sectionId -> { dayKey: {sum,count} }
   const sectionCurMonth = {}; // sectionId -> {sum,count,label}
 
   SECTIONS.forEach(s => {
     const q = query(collection(db, "orders"), where("section", "==", s.id));
     const unsub = onSnapshot(q, (snap) => {
-      const monthly = {};
+      const monthly = {}, weekly = {}, daily = {};
       let curSum = 0, curCount = 0;
       snap.forEach(d => {
         const data = d.data();
         const dt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
         if (!dt) return;
-        const key = monthKeyOf(dt);
-        if (!monthly[key]) monthly[key] = { sum: 0, count: 0 };
-        monthly[key].sum += data.profit || 0;
-        monthly[key].count++;
-        if (key === curKey) { curSum += data.profit || 0; curCount++; }
+        const mKey = monthKeyOf(dt);
+        if (!monthly[mKey]) monthly[mKey] = { sum: 0, count: 0 };
+        monthly[mKey].sum += data.profit || 0;
+        monthly[mKey].count++;
+
+        const wKey = weekKeyOf(dt);
+        if (!weekly[wKey]) weekly[wKey] = { sum: 0, count: 0 };
+        weekly[wKey].sum += data.profit || 0;
+        weekly[wKey].count++;
+
+        const dKey = dayKeyOf(dt);
+        if (!daily[dKey]) daily[dKey] = { sum: 0, count: 0, dt };
+        daily[dKey].sum += data.profit || 0;
+        daily[dKey].count++;
+
+        if (mKey === curKey) { curSum += data.profit || 0; curCount++; }
       });
       sectionMonthly[s.id] = monthly;
+      sectionWeekly[s.id] = weekly;
+      sectionDaily[s.id] = daily;
       sectionCurMonth[s.id] = { sum: curSum, count: curCount, label: s.label };
       draw();
     });
     unsubs.push(unsub);
   });
   unsubscribeOrders = () => unsubs.forEach(u => u());
+
+  function mergePeriods(perSectionMap) {
+    const merged = {};
+    SECTIONS.forEach(s => {
+      const map = perSectionMap[s.id] || {};
+      Object.entries(map).forEach(([key, val]) => {
+        if (!merged[key]) merged[key] = { sum: 0, count: 0, dt: val.dt };
+        merged[key].sum += val.sum;
+        merged[key].count += val.count;
+      });
+    });
+    return merged;
+  }
 
   function draw() {
     let curHtml = "";
@@ -717,25 +790,33 @@ function renderGrandTotals() {
     curHtml += `<div class="grandRow" style="border-top:2px solid var(--accent);margin-top:6px;padding-top:12px;"><span>إجمالي الشهر</span><b>${grandCur.toLocaleString()}</b></div>`;
     grandBox.innerHTML = curHtml;
 
-    const allMonths = {};
-    SECTIONS.forEach(s => {
-      const monthly = sectionMonthly[s.id] || {};
-      Object.entries(monthly).forEach(([key, val]) => {
-        if (!allMonths[key]) allMonths[key] = { sum: 0, count: 0 };
-        allMonths[key].sum += val.sum;
-        allMonths[key].count += val.count;
-      });
-    });
-    const keys = Object.keys(allMonths).sort().reverse();
-    if (keys.length === 0) {
-      logBox.innerHTML = `<div class="emptyState">ماكو بيانات بعد</div>`;
-      return;
-    }
-    logBox.innerHTML = keys.map(key => {
-      const t = allMonths[key];
-      const isCur = key === curKey;
-      return `<div class="grandRow"><span>${monthLabelOf(key)}${isCur ? " (الشهر الحالي)" : ""} — ${t.count} طلب</span><b>${t.sum.toLocaleString()}</b></div>`;
-    }).join("");
+    const allMonths = mergePeriods(sectionMonthly);
+    const monthKeys = Object.keys(allMonths).sort().reverse();
+    monthlyLogBox.innerHTML = monthKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
+      monthKeys.map(key => {
+        const t = allMonths[key];
+        const isCur = key === curKey;
+        return `<div class="grandRow"><span>${monthLabelOf(key)}${isCur ? " (الشهر الحالي)" : ""} — ${t.count} طلب</span><b>${t.sum.toLocaleString()}</b></div>`;
+      }).join("");
+
+    const allWeeks = mergePeriods(sectionWeekly);
+    const weekKeys = Object.keys(allWeeks).sort().reverse().slice(0, 16);
+    weeklyLogBox.innerHTML = weekKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
+      weekKeys.map(key => {
+        const t = allWeeks[key];
+        const color = t.sum >= 0 ? "var(--gold)" : "var(--danger)";
+        return `<div class="grandRow"><span>${weekLabelOf(key)} (${t.count} طلب)</span><b style="color:${color}">${t.sum.toLocaleString()}</b></div>`;
+      }).join("");
+
+    const allDays = mergePeriods(sectionDaily);
+    const dayKeys = Object.keys(allDays).sort().reverse().slice(0, 20);
+    dailyLogBox.innerHTML = dayKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
+      dayKeys.map(key => {
+        const t = allDays[key];
+        const label = t.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
+        const color = t.sum >= 0 ? "var(--gold)" : "var(--danger)";
+        return `<div class="grandRow"><span>${label} (${t.count} طلب)</span><b style="color:${color}">${t.sum.toLocaleString()}</b></div>`;
+      }).join("");
   }
 }
 
