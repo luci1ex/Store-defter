@@ -234,6 +234,46 @@
   .grandRow{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:14px;}
   .grandRow:last-child{border-bottom:none;}
   .grandRow b{font-family:'Sora',sans-serif;color:var(--gold);}
+
+  /* collapsible cards + rows */
+  details.card{padding:0;overflow:hidden;}
+  details.card > summary{
+    padding:20px;cursor:pointer;list-style:none;
+    display:flex;justify-content:space-between;align-items:center;
+  }
+  details.card > summary::-webkit-details-marker{display:none;}
+  details.card > summary::marker{content:"";}
+  details.card > summary h3{margin:0;}
+  details.card > summary .chev{color:var(--muted);font-size:12px;transition:transform .15s ease;}
+  details.card[open] > summary .chev{transform:rotate(180deg);}
+  details.card > .cardBody{padding:0 20px 20px;}
+
+  .periodRow[open] .periodChev{transform:rotate(180deg);display:inline-block;}
+  .periodChev{display:inline-block;transition:transform .15s ease;font-size:10px;color:var(--muted);}
+  .periodRow summary{cursor:pointer;list-style:none;}
+  .periodRow summary::-webkit-details-marker{display:none;}
+  .periodRow summary::marker{content:"";}
+  .periodDetail{
+    background:var(--surface);
+    border-radius:10px;
+    padding:4px 12px;
+    margin:2px 0 8px;
+  }
+  .periodDetail .pOrder{padding:9px 0;border-top:1px solid var(--border);font-size:12.5px;color:var(--muted);}
+  .periodDetail .pOrder:first-child{border-top:none;}
+  .periodDetail .pOrder .pMain{color:var(--text);}
+
+  /* custom confirm modal */
+  .modalOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.65);
+    z-index:80;display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .modalBox{
+    background:var(--surface);border:1px solid var(--accent);border-radius:16px;
+    padding:22px;max-width:340px;width:100%;
+  }
+  .modalBox p{margin:0 0 20px;font-size:14.5px;line-height:1.7;color:var(--text);}
+  .modalBox .row2{display:flex;gap:10px;}
 </style>
 </head>
 <body>
@@ -388,6 +428,26 @@ let activeSection = "nitro";
 let unsubscribeOrders = null;
 let currentOrders = [];
 let editingOrderId = null;
+const expandedRows = new Set();
+
+function showConfirmModal(message) {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.className = "modalOverlay";
+    overlay.innerHTML = `
+      <div class="modalBox">
+        <p>${message}</p>
+        <div class="row2">
+          <button class="btn" id="confirmYesBtn">تأكيد</button>
+          <button class="btn ghost" id="confirmNoBtn">إلغاء</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector("#confirmYesBtn").addEventListener("click", () => { overlay.remove(); resolve(true); });
+    overlay.querySelector("#confirmNoBtn").addEventListener("click", () => { overlay.remove(); resolve(false); });
+  });
+}
 
 /* ---------------- Auth screen logic ---------------- */
 let mode = "login"; // or "signup"
@@ -497,18 +557,18 @@ function renderSection() {
         <h3>ربح الشهر الحالي — <span id="curMonthLabel"></span></h3>
         <div id="grandBox">جاري التحميل...</div>
       </div>
-      <div class="card">
-        <h3>السجل الشهري</h3>
-        <div id="monthlyLog">جاري التحميل...</div>
-      </div>
-      <div class="card">
-        <h3>السجل الأسبوعي</h3>
-        <div id="weeklyLog">جاري التحميل...</div>
-      </div>
-      <div class="card">
-        <h3>السجل اليومي</h3>
-        <div id="dailyLog">جاري التحميل...</div>
-      </div>
+      <details class="card">
+        <summary><h3>السجل الشهري</h3><span class="chev">▾</span></summary>
+        <div class="cardBody" id="monthlyLog">جاري التحميل...</div>
+      </details>
+      <details class="card">
+        <summary><h3>السجل الأسبوعي</h3><span class="chev">▾</span></summary>
+        <div class="cardBody" id="weeklyLog">جاري التحميل...</div>
+      </details>
+      <details class="card">
+        <summary><h3>السجل اليومي</h3><span class="chev">▾</span></summary>
+        <div class="cardBody" id="dailyLog">جاري التحميل...</div>
+      </details>
     `;
     renderGrandTotals();
     return;
@@ -563,15 +623,15 @@ function renderSection() {
       <div><b id="totalProfit">0</b>مجموع الربح</div>
     </div>
 
-    <div class="card">
-      <h3>الربح حسب اليوم</h3>
-      <div id="dailyBreakdown"></div>
-    </div>
+    <details class="card">
+      <summary><h3>الربح حسب اليوم</h3><span class="chev">▾</span></summary>
+      <div class="cardBody" id="dailyBreakdown"></div>
+    </details>
 
-    <div class="card">
-      <h3>الربح حسب الأسبوع</h3>
-      <div id="weeklyBreakdown"></div>
-    </div>
+    <details class="card">
+      <summary><h3>الربح حسب الأسبوع</h3><span class="chev">▾</span></summary>
+      <div class="cardBody" id="weeklyBreakdown"></div>
+    </details>
 
     <div id="orderList"></div>
   `;
@@ -712,7 +772,7 @@ function renderOrderList(section) {
 
   listEl.querySelectorAll(".delBtn[data-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      if (confirm("متأكد تريد تحذف هذا الطلب؟")) {
+      if (await showConfirmModal("متأكد تريد تحذف هذا الطلب؟")) {
         await deleteDoc(doc(db, "orders", btn.dataset.id));
       }
     });
@@ -771,6 +831,46 @@ function renderEditForm(o, section) {
   `;
 }
 
+function renderOrderMiniList(orders) {
+  return orders.map(o => {
+    const color = o.profit >= 0 ? "var(--gold)" : "var(--danger)";
+    return `
+      <div class="pOrder">
+        <div class="pMain">${o.sectionLabel ? escapeHtml(o.sectionLabel) + " — " : ""}تكلفة ${o.cost.toLocaleString()} · بيع ${o.sell.toLocaleString()} · <span style="color:${color};font-weight:700;">${o.profit.toLocaleString()}</span></div>
+        ${o.buyerName ? `<div>الزبون: ${escapeHtml(o.buyerName)}</div>` : ""}
+        ${o.ticketNumber ? `<div>التكت: #${escapeHtml(o.ticketNumber)}</div>` : ""}
+        ${(o.points !== null && o.points !== undefined) ? `<div>النقاط: ${o.points}</div>` : ""}
+        ${o.accountType ? `<div>نوع الحساب: ${escapeHtml(o.accountType)}</div>` : ""}
+        ${o.note ? `<div>${escapeHtml(o.note)}</div>` : ""}
+        ${o.createdBy ? `<div>أكدها: ${escapeHtml(o.createdBy)}</div>` : ""}
+      </div>
+    `;
+  }).join("");
+}
+
+function renderPeriodRow(rowId, label, count, sum, orders) {
+  const color = sum >= 0 ? "var(--gold)" : "var(--danger)";
+  const isOpen = expandedRows.has(rowId);
+  return `
+    <details class="periodRow" data-row="${rowId}" ${isOpen ? "open" : ""}>
+      <summary class="grandRow" style="margin:0;">
+        <span>${label} (${count} طلب) <span class="chev periodChev">▾</span></span>
+        <b style="color:${color}">${sum.toLocaleString()}</b>
+      </summary>
+      <div class="periodDetail">${renderOrderMiniList(orders)}</div>
+    </details>
+  `;
+}
+
+function wirePeriodToggles(box) {
+  box.querySelectorAll(".periodRow").forEach(el => {
+    el.addEventListener("toggle", () => {
+      const id = el.dataset.row;
+      if (el.open) expandedRows.add(id); else expandedRows.delete(id);
+    });
+  });
+}
+
 function renderDailyBreakdown() {
   const dayBox = document.getElementById("dailyBreakdown");
   const weekBox = document.getElementById("weeklyBreakdown");
@@ -782,14 +882,16 @@ function renderDailyBreakdown() {
     const dt = o.createdAt?.toDate ? o.createdAt.toDate() : null;
     if (!dt) return;
     const dKey = dayKeyOf(dt);
-    if (!days[dKey]) days[dKey] = { sum: 0, count: 0, dt };
+    if (!days[dKey]) days[dKey] = { sum: 0, count: 0, dt, orders: [] };
     days[dKey].sum += o.profit || 0;
     days[dKey].count++;
+    days[dKey].orders.push(o);
 
     const wKey = weekKeyOf(dt);
-    if (!weeks[wKey]) weeks[wKey] = { sum: 0, count: 0 };
+    if (!weeks[wKey]) weeks[wKey] = { sum: 0, count: 0, orders: [] };
     weeks[wKey].sum += o.profit || 0;
     weeks[wKey].count++;
+    weeks[wKey].orders.push(o);
   });
 
   const dayKeys = Object.keys(days).sort().reverse();
@@ -797,17 +899,17 @@ function renderDailyBreakdown() {
     dayKeys.map(key => {
       const d = days[key];
       const label = d.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
-      const color = d.sum >= 0 ? "var(--gold)" : "var(--danger)";
-      return `<div class="grandRow"><span>${label} (${d.count} طلب)</span><b style="color:${color}">${d.sum.toLocaleString()}</b></div>`;
+      return renderPeriodRow("d-" + key, label, d.count, d.sum, d.orders);
     }).join("");
+  wirePeriodToggles(dayBox);
 
   const weekKeys = Object.keys(weeks).sort().reverse();
   weekBox.innerHTML = weekKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
     weekKeys.map(key => {
       const w = weeks[key];
-      const color = w.sum >= 0 ? "var(--gold)" : "var(--danger)";
-      return `<div class="grandRow"><span>${weekLabelOf(key)} (${w.count} طلب)</span><b style="color:${color}">${w.sum.toLocaleString()}</b></div>`;
+      return renderPeriodRow("w-" + key, weekLabelOf(key), w.count, w.sum, w.orders);
     }).join("");
+  wirePeriodToggles(weekBox);
 }
 
 /* ---------------- Grand totals (manager only) ---------------- */
@@ -842,7 +944,7 @@ function renderGrandTotals() {
     const pending = allRaw.filter(o => !lastSettledAt || o.dt > lastSettledAt);
     const amount = pending.reduce((s, o) => s + o.profit, 0);
     if (pending.length === 0) { alert("ماكو ربح جديد للتصفية"); return; }
-    if (!confirm(`راح تصفّي مبلغ ${amount.toLocaleString()} من ${pending.length} طلب. متأكد؟`)) return;
+    if (!(await showConfirmModal(`راح تصفّي مبلغ ${amount.toLocaleString()} من ${pending.length} طلب. متأكد؟`))) return;
     await addDoc(collection(db, "settlements"), {
       amount,
       ordersCount: pending.length,
@@ -861,21 +963,26 @@ function renderGrandTotals() {
         const data = d.data();
         const dt = data.createdAt?.toDate ? data.createdAt.toDate() : null;
         if (!dt) return;
+        const orderObj = { ...data, dt, sectionLabel: s.label };
         raw.push({ profit: data.profit || 0, dt });
+
         const mKey = monthKeyOf(dt);
-        if (!monthly[mKey]) monthly[mKey] = { sum: 0, count: 0 };
+        if (!monthly[mKey]) monthly[mKey] = { sum: 0, count: 0, orders: [] };
         monthly[mKey].sum += data.profit || 0;
         monthly[mKey].count++;
+        monthly[mKey].orders.push(orderObj);
 
         const wKey = weekKeyOf(dt);
-        if (!weekly[wKey]) weekly[wKey] = { sum: 0, count: 0 };
+        if (!weekly[wKey]) weekly[wKey] = { sum: 0, count: 0, orders: [] };
         weekly[wKey].sum += data.profit || 0;
         weekly[wKey].count++;
+        weekly[wKey].orders.push(orderObj);
 
         const dKey = dayKeyOf(dt);
-        if (!daily[dKey]) daily[dKey] = { sum: 0, count: 0, dt };
+        if (!daily[dKey]) daily[dKey] = { sum: 0, count: 0, dt, orders: [] };
         daily[dKey].sum += data.profit || 0;
         daily[dKey].count++;
+        daily[dKey].orders.push(orderObj);
 
         if (mKey === curKey) { curSum += data.profit || 0; curCount++; }
       });
@@ -895,9 +1002,10 @@ function renderGrandTotals() {
     SECTIONS.forEach(s => {
       const map = perSectionMap[s.id] || {};
       Object.entries(map).forEach(([key, val]) => {
-        if (!merged[key]) merged[key] = { sum: 0, count: 0, dt: val.dt };
+        if (!merged[key]) merged[key] = { sum: 0, count: 0, dt: val.dt, orders: [] };
         merged[key].sum += val.sum;
         merged[key].count += val.count;
+        merged[key].orders.push(...val.orders);
       });
     });
     return merged;
@@ -940,17 +1048,16 @@ function renderGrandTotals() {
       monthKeys.map(key => {
         const t = allMonths[key];
         const isCur = key === curKey;
-        return `<div class="grandRow"><span>${monthLabelOf(key)}${isCur ? " (الشهر الحالي)" : ""} — ${t.count} طلب</span><b>${t.sum.toLocaleString()}</b></div>`;
+        const label = monthLabelOf(key) + (isCur ? " (الشهر الحالي)" : "");
+        return renderPeriodRow("gm-" + key, label, t.count, t.sum, t.orders);
       }).join("");
+    wirePeriodToggles(monthlyLogBox);
 
     const allWeeks = mergePeriods(sectionWeekly);
     const weekKeys = Object.keys(allWeeks).sort().reverse().slice(0, 16);
     weeklyLogBox.innerHTML = weekKeys.length === 0 ? `<div class="emptyState">ماكو بيانات بعد</div>` :
-      weekKeys.map(key => {
-        const t = allWeeks[key];
-        const color = t.sum >= 0 ? "var(--gold)" : "var(--danger)";
-        return `<div class="grandRow"><span>${weekLabelOf(key)} (${t.count} طلب)</span><b style="color:${color}">${t.sum.toLocaleString()}</b></div>`;
-      }).join("");
+      weekKeys.map(key => renderPeriodRow("gw-" + key, weekLabelOf(key), allWeeks[key].count, allWeeks[key].sum, allWeeks[key].orders)).join("");
+    wirePeriodToggles(weeklyLogBox);
 
     const allDays = mergePeriods(sectionDaily);
     const dayKeys = Object.keys(allDays).sort().reverse().slice(0, 20);
@@ -958,9 +1065,9 @@ function renderGrandTotals() {
       dayKeys.map(key => {
         const t = allDays[key];
         const label = t.dt.toLocaleDateString("ar-IQ", { day: "numeric", month: "long" });
-        const color = t.sum >= 0 ? "var(--gold)" : "var(--danger)";
-        return `<div class="grandRow"><span>${label} (${t.count} طلب)</span><b style="color:${color}">${t.sum.toLocaleString()}</b></div>`;
+        return renderPeriodRow("gd-" + key, label, t.count, t.sum, t.orders);
       }).join("");
+    wirePeriodToggles(dailyLogBox);
   }
 }
 
