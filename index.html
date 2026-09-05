@@ -298,7 +298,7 @@ import {
   onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-auth.js";
 import {
-  getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot,
+  getFirestore, collection, addDoc, deleteDoc, updateDoc, doc, onSnapshot,
   query, where, orderBy, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
@@ -387,6 +387,7 @@ let isManager = false;
 let activeSection = "nitro";
 let unsubscribeOrders = null;
 let currentOrders = [];
+let editingOrderId = null;
 
 /* ---------------- Auth screen logic ---------------- */
 let mode = "login"; // or "signup"
@@ -465,6 +466,7 @@ function buildTabs() {
     btn.className = s.id === activeSection ? "active" : "";
     btn.addEventListener("click", () => {
       activeSection = s.id;
+      editingOrderId = null;
       buildTabs();
       renderSection();
     });
@@ -531,9 +533,23 @@ function renderSection() {
           <input type="number" id="sellInput" placeholder="0">
         </div>
       </div>
+      <div class="grid2">
+        <div class="field">
+          <label>اسم/آيدي الزبون (اختياري)</label>
+          <input type="text" id="buyerInput" placeholder="مثلاً: user#1234">
+        </div>
+        <div class="field">
+          <label>رقم التكت (اختياري)</label>
+          <input type="text" id="ticketInput" placeholder="مثلاً: 0042">
+        </div>
+      </div>
+      <div class="field">
+        <label>النقاط المعطاة (اختياري)</label>
+        <input type="number" id="pointsInput" placeholder="0">
+      </div>
       <div class="field">
         <label>ملاحظة (اختياري)</label>
-        <input type="text" id="noteInput" placeholder="اسم الزبون، تفاصيل إضافية...">
+        <input type="text" id="noteInput" placeholder="تفاصيل إضافية...">
       </div>
       <div class="profitPreview">
         <span>الربح</span>
@@ -579,6 +595,10 @@ function renderSection() {
     const sell = parseFloat(sellEl.value);
     if (isNaN(cost) || isNaN(sell)) { alert("لازم تكتب سعر التكلفة وسعر البيع"); return; }
     const note = document.getElementById("noteInput").value.trim();
+    const buyerName = document.getElementById("buyerInput").value.trim();
+    const ticketNumber = document.getElementById("ticketInput").value.trim();
+    const pointsRaw = document.getElementById("pointsInput").value;
+    const points = pointsRaw === "" ? null : Number(pointsRaw);
     const accountType = section.extraField ? document.getElementById("accountTypeInput").value.trim() : null;
 
     await addDoc(collection(db, "orders"), {
@@ -586,6 +606,9 @@ function renderSection() {
       cost, sell,
       profit: sell - cost,
       note: note || null,
+      buyerName: buyerName || null,
+      ticketNumber: ticketNumber || null,
+      points: points,
       accountType: accountType || null,
       createdBy: currentUser.email,
       createdByUid: currentUser.uid,
@@ -593,6 +616,7 @@ function renderSection() {
     });
 
     costEl.value = ""; sellEl.value = ""; document.getElementById("noteInput").value = "";
+    document.getElementById("buyerInput").value = ""; document.getElementById("ticketInput").value = ""; document.getElementById("pointsInput").value = "";
     if (section.extraField) document.getElementById("accountTypeInput").value = "";
     updatePreview();
   });
@@ -661,6 +685,8 @@ function renderOrderList(section) {
   }
 
   listEl.innerHTML = currentOrders.map(o => {
+    if (o.id === editingOrderId) return renderEditForm(o, section);
+
     const isPos = o.profit >= 0;
     const date = o.createdAt?.toDate ? o.createdAt.toDate().toLocaleDateString("ar-IQ") : "";
     const canDelete = isManager || o.createdByUid === currentUser.uid;
@@ -671,20 +697,78 @@ function renderOrderList(section) {
           <div class="profitVal ${isPos ? "pos" : "neg"}">${o.profit.toLocaleString()}</div>
         </div>
         ${o.accountType ? `<div class="note">نوع الحساب: ${escapeHtml(o.accountType)}</div>` : ""}
+        ${o.buyerName ? `<div class="note">الزبون: ${escapeHtml(o.buyerName)}</div>` : ""}
+        ${o.ticketNumber ? `<div class="note">التكت: #${escapeHtml(o.ticketNumber)}</div>` : ""}
+        ${(o.points !== null && o.points !== undefined) ? `<div class="note">النقاط: ${o.points.toLocaleString()}</div>` : ""}
         ${o.note ? `<div class="note">${escapeHtml(o.note)}</div>` : ""}
-        <div class="meta">${date}${isManager ? " · " + o.createdBy : ""}</div>
-        ${canDelete ? `<div class="actions"><button class="delBtn" data-id="${o.id}">حذف</button></div>` : ""}
+        <div class="meta">${date}${isManager ? " · أكدها: " + o.createdBy : ""}</div>
+        <div class="actions" style="display:flex;gap:14px;">
+          ${isManager ? `<button class="delBtn" data-edit="${o.id}" style="color:var(--gold);">تعديل</button>` : ""}
+          ${canDelete ? `<button class="delBtn" data-id="${o.id}">حذف</button>` : ""}
+        </div>
       </div>
     `;
   }).join("");
 
-  listEl.querySelectorAll(".delBtn").forEach(btn => {
+  listEl.querySelectorAll(".delBtn[data-id]").forEach(btn => {
     btn.addEventListener("click", async () => {
       if (confirm("متأكد تريد تحذف هذا الطلب؟")) {
         await deleteDoc(doc(db, "orders", btn.dataset.id));
       }
     });
   });
+
+  listEl.querySelectorAll("[data-edit]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      editingOrderId = btn.dataset.edit;
+      renderOrderList(section);
+    });
+  });
+
+  const cancelBtn = document.getElementById("cancelEditBtn");
+  if (cancelBtn) cancelBtn.addEventListener("click", () => { editingOrderId = null; renderOrderList(section); });
+
+  const saveBtn = document.getElementById("saveEditBtn");
+  if (saveBtn) saveBtn.addEventListener("click", async () => {
+    const id = saveBtn.dataset.id;
+    const cost = parseFloat(document.getElementById("editCost").value);
+    const sell = parseFloat(document.getElementById("editSell").value);
+    if (isNaN(cost) || isNaN(sell)) { alert("لازم تكتب سعر التكلفة وسعر البيع"); return; }
+    const updates = {
+      cost, sell, profit: sell - cost,
+      note: document.getElementById("editNote").value.trim() || null,
+      buyerName: document.getElementById("editBuyer").value.trim() || null,
+      ticketNumber: document.getElementById("editTicket").value.trim() || null,
+      points: document.getElementById("editPoints").value === "" ? null : Number(document.getElementById("editPoints").value)
+    };
+    if (section.extraField) updates.accountType = document.getElementById("editAccountType").value.trim() || null;
+    await updateDoc(doc(db, "orders", id), updates);
+    editingOrderId = null;
+  });
+}
+
+function renderEditForm(o, section) {
+  return `
+    <div class="orderRow" style="border-color:var(--accent);">
+      <h3 style="margin:0 0 12px;font-size:14px;color:var(--gold);">تعديل الطلب</h3>
+      ${section.extraField ? `
+      <div class="field"><label>نوع الحساب</label><input type="text" id="editAccountType" value="${escapeAttr(o.accountType || "")}"></div>` : ""}
+      <div class="grid2">
+        <div class="field"><label>سعر التكلفة</label><input type="number" id="editCost" value="${o.cost}"></div>
+        <div class="field"><label>سعر البيع</label><input type="number" id="editSell" value="${o.sell}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>اسم/آيدي الزبون</label><input type="text" id="editBuyer" value="${escapeAttr(o.buyerName || "")}"></div>
+        <div class="field"><label>رقم التكت</label><input type="text" id="editTicket" value="${escapeAttr(o.ticketNumber || "")}"></div>
+      </div>
+      <div class="field"><label>النقاط المعطاة</label><input type="number" id="editPoints" value="${o.points ?? ""}"></div>
+      <div class="field"><label>ملاحظة</label><input type="text" id="editNote" value="${escapeAttr(o.note || "")}"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn" id="saveEditBtn" data-id="${o.id}">حفظ</button>
+        <button class="btn ghost" id="cancelEditBtn">إلغاء</button>
+      </div>
+    </div>
+  `;
 }
 
 function renderDailyBreakdown() {
@@ -884,6 +968,9 @@ function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
+}
+function escapeAttr(str) {
+  return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 </script>
 </body>
