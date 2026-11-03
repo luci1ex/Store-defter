@@ -4,223 +4,30 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080b14">
-  <title>Botspanel | لوحة الإدارة</title>
+  <title>Botspanel</title>
   <style>
-    :root{--bg:#080b14;--panel:#111827;--panel2:#171d2c;--line:#252e43;--text:#eef2ff;--muted:#9aa7c2;--purple:#8b5cf6;--cyan:#22d3ee;--green:#4ade80;--red:#fb7185;--amber:#fbbf24}
-    *{box-sizing:border-box}body{margin:0;background:radial-gradient(900px 500px at 90% -10%,#33205e66,transparent 60%),radial-gradient(700px 400px at 0% 40%,#07566b33,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif;min-height:100vh}
-    button,input,select{font:inherit;color:inherit}.wrap{max-width:1200px;margin:auto;padding:24px}.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}.brand{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px}.logo{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#07101a;font-weight:900;box-shadow:0 8px 30px #8b5cf644}.sub{color:var(--muted);font-size:13px}.pill{border:1px solid var(--line);border-radius:999px;padding:9px 14px;color:var(--muted);font-size:13px;background:#111827aa}
-    .login{max-width:430px;margin:8vh auto;background:#111827dd;border:1px solid var(--line);border-radius:24px;padding:30px;box-shadow:0 25px 80px #0008}.login h1{margin:0 0 8px;font-size:26px}.login p{color:var(--muted);line-height:1.8;margin:0 0 24px}.field{display:grid;gap:8px;margin:14px 0}.field label{font-size:13px;color:#cbd5e1}input,select{width:100%;min-height:44px;padding:11px 14px;background:#090e19;border:1px solid #303a52;border-radius:12px;color:var(--text);outline:none}input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #22d3ee1c}
-    .btn{border:0;min-height:44px;border-radius:12px;padding:11px 18px;background:linear-gradient(110deg,var(--purple),#5b7cfa 55%,var(--cyan));color:#06101b;font-weight:800;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.btn.secondary{background:#202a3d;color:var(--text);border:1px solid var(--line)}.btn.danger{background:#3b1620;color:#fecdd3;border:1px solid #5b2230}.wide{width:100%}.small{min-height:36px;padding:7px 12px;font-size:13px}
-    :focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-    .err{color:#fda4af;font-size:13px;min-height:20px;margin-top:10px}.ok{color:var(--green)}
-    .app{display:none}.hero{background:linear-gradient(120deg,#171d2d,#21183a 65%,#102b37);border:1px solid #34304f;border-radius:22px;padding:22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.hero h1{margin:0 0 6px;font-size:24px}.hero p{margin:0;color:var(--muted)}
-    .tabs{display:flex;gap:8px;overflow-x:auto;margin-bottom:18px;padding-bottom:4px}.tab{min-height:44px;white-space:nowrap;border:1px solid var(--line);background:#111827aa;border-radius:12px;padding:0 16px;cursor:pointer;color:var(--muted)}.tab[aria-selected=true]{background:#21183a;color:var(--text);border-color:var(--purple)}
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}.card{background:linear-gradient(160deg,#151d2d,#101522);border:1px solid var(--line);border-radius:18px;padding:18px}.metric{font-size:25px;font-weight:800;margin:8px 0}.label{font-size:13px;color:var(--muted)}.good{color:var(--green)}.bad{color:var(--red)}.accent{color:var(--cyan)}
-    .card h2{font-size:17px;margin:0 0 14px}.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}.toolbar input,.toolbar select{width:auto;min-width:160px}
-    .tw{overflow:auto;border:1px solid var(--line);border-radius:12px;max-height:520px}table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:10px 12px;text-align:start;white-space:nowrap;border-bottom:1px solid #202a3d}th{position:sticky;top:0;background:#171d2c;color:var(--muted);font-weight:600}tr:hover td{background:#ffffff08}.empty{padding:26px;text-align:center;color:var(--muted)}
-    .mono{font-family:ui-monospace,Menlo,Consolas,monospace;direction:ltr;unicode-bidi:isolate}.status{font-size:12px;padding:4px 10px;border-radius:999px;background:#202a3d;color:var(--muted)}.status.on,.status.paid,.status.approved,.status.ok{color:var(--green);background:#123322}.status.off,.status.pending,.status.awaiting_reason{color:var(--amber);background:#3b2b12}.status.rejected,.status.failed,.status.delivery_failed{color:var(--red);background:#3b1620}
-    .switch{position:relative;width:48px;height:28px;min-height:0;padding:0;border-radius:99px;border:1px solid var(--line);background:#202a3d;cursor:pointer}.switch::after{content:"";position:absolute;top:3px;inset-inline-start:3px;width:20px;height:20px;border-radius:50%;background:#94a3b8;transition:inset-inline-start .2s,background .2s}.switch[aria-checked=true]{background:#123322;border-color:#1f6b43}.switch[aria-checked=true]::after{inset-inline-start:23px;background:var(--green)}
-    dialog{background:#111827;color:var(--text);border:1px solid var(--line);border-radius:18px;padding:24px;width:min(460px,92vw)}dialog::backdrop{background:#000a}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actions{display:flex;gap:8px;flex-wrap:wrap}.footer{color:#71809d;text-align:center;font-size:12px;padding:28px 0 10px}
-    @media(max-width:850px){.grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:480px){.wrap{padding:16px}.metric{font-size:21px}.login{margin:5vh 0;padding:22px}.two{grid-template-columns:1fr}}
-    @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+    :root{--bg:#080b14;--line:#252e43;--text:#eef2ff;--muted:#9aa7c2;--purple:#8b5cf6;--cyan:#22d3ee}
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(900px 500px at 90% -10%,#33205e66,transparent 60%),radial-gradient(700px 400px at 0% 40%,#07566b33,transparent 60%),var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,Arial,sans-serif}
+    .card{width:min(420px,100%);text-align:center;background:#111827dd;border:1px solid var(--line);border-radius:24px;padding:32px 24px;box-shadow:0 25px 80px #0008}
+    .logo{width:56px;height:56px;margin:0 auto 14px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#07101a;font-weight:900;font-size:20px}
+    h1{margin:0 0 6px;font-size:24px}p{margin:0 0 22px;color:var(--muted);line-height:1.8}
+    a.btn{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:12px;background:linear-gradient(110deg,var(--purple),#5b7cfa 55%,var(--cyan));color:#06101b;font-weight:800;text-decoration:none}
+    a.btn:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+    .note{margin-top:16px;font-size:12px;color:var(--muted)}
   </style>
 </head>
 <body>
-<div class="wrap">
-  <header class="top">
-    <div class="brand"><div class="logo">BP</div><div>Botspanel<div class="sub">مركز إدارة بوتاتك</div></div></div>
-    <div class="pill" id="conn" role="status">غير متصل</div>
-  </header>
-
-  <section class="login" id="login">
-    <h1>تسجيل دخول المالك</h1>
-    <p>أهلاً بك في لوحة إدارة بوت آسيا سيل وبوت الإيداعات.</p>
-    <form id="loginForm">
-      <div class="field"><label for="username">اسم المستخدم</label><input id="username" autocomplete="username" required></div>
-      <div class="field"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required></div>
-      <details class="field"><summary class="sub" style="cursor:pointer">عنوان الخادم (فقط إذا الصفحة مستضافة بمكان آخر)</summary>
-        <input id="apiBase" class="mono" placeholder="https://panel.example.com" style="margin-top:8px"></details>
-      <button class="btn wide" type="submit" id="loginBtn">دخول إلى اللوحة</button>
-      <div class="err" id="loginErr" role="alert"></div>
-    </form>
-  </section>
-
-  <main class="app" id="app">
-    <section class="hero">
-      <div><h1>لوحة التحكم الرئيسية</h1><p>إدارة مركزية لبوت آسيا سيل وبوت الإيداعات</p></div>
-      <div class="actions"><span class="pill">المالك</span><button class="btn secondary small" id="logout">تسجيل الخروج</button></div>
-    </section>
-
-    <nav class="tabs" role="tablist" aria-label="الأقسام">
-      <button class="tab" role="tab" data-tab="overview" aria-selected="true">نظرة عامة</button>
-      <button class="tab" role="tab" data-tab="methods" aria-selected="false">وسائل الدفع</button>
-      <button class="tab" role="tab" data-tab="users" aria-selected="false">المستخدمون</button>
-      <button class="tab" role="tab" data-tab="withdrawals" aria-selected="false">السحوبات</button>
-      <button class="tab" role="tab" data-tab="deposits" aria-selected="false">الإيداعات</button>
-      <button class="tab" role="tab" data-tab="audit" aria-selected="false">السجل</button>
-    </nav>
-
-    <section id="p-overview"></section>
-    <section id="p-methods" hidden>
-      <div class="card">
-        <div class="toolbar"><h2 style="margin:0">وسائل الدفع والأسعار</h2><span style="flex:1"></span><button class="btn small" id="addMethod">إضافة وسيلة</button></div>
-        <p class="sub">التعديلات تصل البوتين خلال 15 ثانية بدون إعادة تشغيل. «السعر» = كم وحدة يستلم الزبون لكل 1 دينار عراقي.</p>
-        <div class="tw"><table><thead><tr><th>الاسم</th><th>النوع</th><th>الحد الأدنى</th><th>الوحدة</th><th>السعر</th><th>مفعّلة</th><th></th></tr></thead><tbody id="methodsBody"></tbody></table></div>
-      </div>
-    </section>
-    <section id="p-users" hidden><div class="card"><div class="toolbar"><input id="userQ" placeholder="بحث: أيدي أو اسم أو @يوزر" aria-label="بحث"><button class="btn secondary small" id="userGo">بحث</button></div><div class="tw"><table><thead><tr><th>الأيدي</th><th>الاسم</th><th>اليوزر</th><th>الرصيد (IQD)</th><th>تاريخ الانضمام</th></tr></thead><tbody id="usersBody"></tbody></table></div></div></section>
-    <section id="p-withdrawals" hidden><div class="card"><div class="toolbar"><select id="wdStatus" aria-label="الحالة"><option value="">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="paid">مدفوعة</option><option value="rejected">مرفوضة</option></select></div><div class="tw"><table><thead><tr><th>#</th><th>الأيدي</th><th>المبلغ (IQD)</th><th>يستلم</th><th>الوسيلة</th><th>المستلم</th><th>الحالة</th><th>الوقت</th></tr></thead><tbody id="wdBody"></tbody></table></div><p class="sub">القبول والرفض يتم من تليجرام لضمان إشعار الزبون وتحديث الرصيد بشكل صحيح.</p></div></section>
-    <section id="p-deposits" hidden><div class="card"><div class="toolbar"><select id="dpStatus" aria-label="الحالة"><option value="">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">مقبولة</option><option value="rejected">مرفوضة</option></select></div><div class="tw"><table><thead><tr><th>#</th><th>الزبون</th><th>الوسيلة</th><th>المبلغ (IQD)</th><th>الحالة</th><th>سبب الرفض</th><th>الوقت</th></tr></thead><tbody id="dpBody"></tbody></table></div></div></section>
-    <section id="p-audit" hidden><div class="card"><h2>سجل عمليات اللوحة</h2><div class="tw"><table><thead><tr><th>الوقت</th><th>العملية</th><th>الهدف</th><th>التفاصيل</th></tr></thead><tbody id="auditBody"></tbody></table></div></div></section>
-
-    <div class="footer">Botspanel © 2026</div>
+  <main class="card">
+    <div class="logo">BP</div>
+    <h1>Botspanel</h1>
+    <p>جاري تحويلك إلى لوحة الإدارة...</p>
+    <a class="btn" id="go" href="http://169.58.150.64:30002">فتح اللوحة</a>
+    <div class="note">إذا ما تحوّلت تلقائياً، اضغط الزر.</div>
   </main>
-</div>
-
-<dialog id="mdlg">
-  <form method="dialog" id="mform">
-    <h2 id="mtitle" style="margin:0 0 12px">وسيلة دفع</h2>
-    <div class="field"><label for="mLabel">الاسم الظاهر للزبون</label><input id="mLabel" maxlength="60" required></div>
-    <div class="two">
-      <div class="field"><label for="mKey">المعرّف (إنكليزي)</label><input id="mKey" class="mono" pattern="[a-z0-9_]{2,32}" required></div>
-      <div class="field"><label for="mCat">النوع</label><select id="mCat"><option value="withdraw">سحب</option><option value="deposit">إيداع</option></select></div>
-      <div class="field"><label for="mMin">الحد الأدنى (IQD)</label><input id="mMin" class="mono" type="number" min="0" step="1" value="0" required></div>
-      <div class="field"><label for="mUnit">الوحدة</label><input id="mUnit" class="mono" maxlength="10" value="USDT" required></div>
-      <div class="field"><label for="mRate">السعر (وحدة لكل 1 IQD)</label><input id="mRate" class="mono" type="number" min="0" step="any" value="0.0009" required></div>
-      <div class="field"><label for="mOrder">الترتيب</label><input id="mOrder" class="mono" type="number" step="1" value="100" required></div>
-    </div>
-    <div class="err" id="mErr" role="alert"></div>
-    <div class="actions" style="margin-top:12px"><button class="btn" value="save">حفظ</button><button type="button" class="btn secondary" id="mCancel">إلغاء</button></div>
-  </form>
-</dialog>
-
-<script>
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const num = n => Number(n || 0).toLocaleString("en-US");
-const dt = t => t ? new Date(t * 1000).toLocaleString("ar-IQ", {dateStyle: "short", timeStyle: "short"}) : "—";
-const ago = t => { if (!t) return "لم يتصل بعد"; const d = Math.floor(Date.now()/1000) - t; return d < 60 ? "الآن" : d < 3600 ? `قبل ${Math.floor(d/60)} د` : d < 86400 ? `قبل ${Math.floor(d/3600)} س` : `قبل ${Math.floor(d/86400)} يوم`; };
-const st = s => `<span class="status ${esc(s)}">${({pending:"قيد المراجعة",paid:"مدفوعة",approved:"مقبولة",rejected:"مرفوضة",awaiting_reason:"بانتظار السبب",failed:"فشلت",delivery_failed:"فشل التسليم"})[s] || esc(s)}</span>`;
-
-let token = sessionStorage.getItem("bp_token") || "";
-let base = (localStorage.getItem("bp_api") || "").replace(/\/$/, "");
-let tab = "overview", methods = [], timer;
-
-async function api(path, body) {
-  const r = await fetch(base + path, {
-    method: body ? "POST" : "GET",
-    headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const j = await r.json().catch(() => ({}));
-  if (r.status === 401 && token) { logout(false); }
-  if (!r.ok) throw new Error(j.error || "خطأ " + r.status);
-  return j;
-}
-
-function showApp(on) { $("login").style.display = on ? "none" : "block"; $("app").style.display = on ? "block" : "none"; }
-function logout(call = true) {
-  if (call && token) api("/api/logout", {}).catch(() => {});
-  token = ""; sessionStorage.removeItem("bp_token"); clearInterval(timer);
-  $("password").value = ""; showApp(false); $("conn").textContent = "غير متصل";
-}
-
-$("apiBase").value = base;
-$("loginForm").addEventListener("submit", async e => {
-  e.preventDefault(); $("loginErr").textContent = ""; $("loginBtn").disabled = true;
-  base = $("apiBase").value.trim().replace(/\/$/, ""); localStorage.setItem("bp_api", base);
-  try {
-    const r = await api("/api/login", { username: $("username").value.trim(), password: $("password").value });
-    token = r.token; sessionStorage.setItem("bp_token", token); start();
-  } catch (err) { $("loginErr").textContent = err.message === "Failed to fetch" ? "تعذّر الاتصال بالخادم" : err.message; }
-  $("loginBtn").disabled = false;
-});
-$("logout").onclick = () => logout();
-
-document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
-  tab = b.dataset.tab;
-  document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === b));
-  ["overview","methods","users","withdrawals","deposits","audit"].forEach(t => $("p-" + t).hidden = t !== tab);
-  load();
-});
-
-function kpi(label, value, sub = "", cls = "") { return `<div class="card"><div class="label">${label}</div><div class="metric ${cls}">${value}</div><div class="label">${sub}</div></div>`; }
-
-async function load() {
-  try {
-    if (tab === "overview") {
-      const o = await api("/api/overview");
-      const bs = (name, b) => kpi(name, b.online ? "متصل" : "غير متصل", "آخر نبضة: " + ago(b.last_seen), b.online ? "good" : "bad");
-      $("p-overview").innerHTML = `<section class="grid">
-        ${bs("بوت آسيا سيل", o.bots.asiacell)}${bs("بوت الإيداعات", o.bots.deposit)}
-        ${kpi("إجمالي الأرصدة", num(o.balance_total) + " IQD", num(o.users) + " مستخدم")}
-        ${kpi("سحوبات قيد المراجعة", num(o.withdrawals_pending.count), num(o.withdrawals_pending.amount) + " IQD", o.withdrawals_pending.count ? "accent" : "")}
-        ${kpi("إثباتات إيداع قيد المراجعة", num(o.proofs_pending), "", o.proofs_pending ? "accent" : "")}
-        ${kpi("كروت معلّقة", num(o.cards_pending), "تحتاج /pending بتليجرام", o.cards_pending ? "accent" : "")}
-        ${kpi("كروت اليوم", num(o.today.cards_amount) + " IQD", num(o.today.cards_count) + " كارت")}
-        ${kpi("إثباتات مقبولة اليوم", num(o.today.proofs_amount) + " IQD", num(o.today.proofs_count) + " إثبات")}
-      </section>`;
-      $("conn").textContent = "متصل بالخادم";
-    } else if (tab === "methods") {
-      methods = await api("/api/methods"); renderMethods();
-    } else if (tab === "users") {
-      const u = await api("/api/users?q=" + encodeURIComponent($("userQ").value.trim()));
-      $("usersBody").innerHTML = u.length ? u.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(x.name)}</td><td class="mono">${x.username ? "@" + esc(x.username) : "—"}</td><td class="mono">${num(x.balance)}</td><td>${dt(x.created)}</td></tr>`).join("") : `<tr><td colspan="5" class="empty">لا توجد نتائج</td></tr>`;
-    } else if (tab === "withdrawals") {
-      const w = await api("/api/withdrawals?status=" + $("wdStatus").value);
-      $("wdBody").innerHTML = w.length ? w.map(x => `<tr><td class="mono">${x.id}</td><td class="mono">${x.user_id}</td><td class="mono">${num(x.amount)}</td><td class="mono">${x.payout}</td><td>${esc(x.method)}</td><td class="mono">${esc(x.recipient)}</td><td>${st(x.status)}</td><td>${dt(x.ts)}</td></tr>`).join("") : `<tr><td colspan="8" class="empty">لا توجد سحوبات</td></tr>`;
-    } else if (tab === "deposits") {
-      const d = await api("/api/deposits?status=" + $("dpStatus").value);
-      $("dpBody").innerHTML = d.length ? d.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(x.full_name || x.username || x.user_id)}<div class="sub mono">${x.user_id}</div></td><td>${esc(x.method)}</td><td class="mono">${num(x.amount)}</td><td>${st(x.status)}</td><td>${esc(x.reject_reason) || "—"}</td><td>${dt(x.created_at)}</td></tr>`).join("") : `<tr><td colspan="7" class="empty">لا توجد إيداعات</td></tr>`;
-    } else if (tab === "audit") {
-      const a = await api("/api/audit");
-      $("auditBody").innerHTML = a.length ? a.map(x => `<tr><td>${dt(x.created_at)}</td><td>${esc(x.action)}</td><td class="mono">${esc(x.target)}</td><td class="mono">${esc(x.details)}</td></tr>`).join("") : `<tr><td colspan="4" class="empty">السجل فارغ</td></tr>`;
-    }
-  } catch (err) { $("conn").textContent = err.message === "Failed to fetch" ? "تعذّر الاتصال" : err.message; }
-}
-
-function renderMethods() {
-  $("methodsBody").innerHTML = methods.length ? methods.map(m => `<tr>
-    <td>${esc(m.label)}<div class="sub mono">${esc(m.key)}</div></td><td>${m.category === "deposit" ? "إيداع" : "سحب"}</td>
-    <td class="mono">${num(m.minimum)}</td><td class="mono">${esc(m.unit)}</td><td class="mono">${m.rate}</td>
-    <td><button class="switch" role="switch" aria-checked="${!!m.enabled}" aria-label="تفعيل ${esc(m.label)}" data-toggle="${esc(m.key)}"></button></td>
-    <td><div class="actions"><button class="btn secondary small" data-edit="${esc(m.key)}">تعديل</button><button class="btn danger small" data-del="${esc(m.key)}">حذف</button></div></td></tr>`).join("")
-    : `<tr><td colspan="7" class="empty">لا توجد وسائل</td></tr>`;
-}
-
-$("methodsBody").addEventListener("click", async e => {
-  const t = e.target.closest("button"); if (!t) return;
-  try {
-    if (t.dataset.toggle) { const m = methods.find(x => x.key === t.dataset.toggle); await api("/api/methods", { ...m, enabled: !m.enabled }); load(); }
-    else if (t.dataset.edit) openMethod(methods.find(x => x.key === t.dataset.edit));
-    else if (t.dataset.del) { const m = methods.find(x => x.key === t.dataset.del); if (confirm(`حذف «${m.label}» نهائياً؟ (للإيقاف المؤقت استخدم المفتاح بدل الحذف)`)) { await api("/api/methods/delete", { key: m.key }); load(); } }
-  } catch (err) { alert(err.message); }
-});
-
-function openMethod(m) {
-  $("mtitle").textContent = m ? "تعديل وسيلة دفع" : "إضافة وسيلة دفع"; $("mErr").textContent = "";
-  $("mKey").value = m?.key || ""; $("mKey").readOnly = !!m; $("mLabel").value = m?.label || "";
-  $("mCat").value = m?.category || "withdraw"; $("mCat").disabled = !!m;
-  $("mMin").value = m?.minimum ?? 0; $("mUnit").value = m?.unit || "USDT"; $("mRate").value = m?.rate ?? 0.0009; $("mOrder").value = m?.sort_order ?? 100;
-  $("mform").dataset.enabled = m ? (m.enabled ? "1" : "") : "1"; $("mdlg").showModal();
-}
-$("addMethod").onclick = () => openMethod(null);
-$("mCancel").onclick = () => $("mdlg").close();
-$("mform").addEventListener("submit", async e => {
-  e.preventDefault();
-  try {
-    await api("/api/methods", { key: $("mKey").value.trim(), label: $("mLabel").value.trim(), category: $("mCat").value,
-      minimum: $("mMin").value, unit: $("mUnit").value.trim(), rate: $("mRate").value, sort_order: $("mOrder").value,
-      enabled: !!$("mform").dataset.enabled });
-    $("mdlg").close(); load();
-  } catch (err) { $("mErr").textContent = err.message; }
-});
-
-$("userGo").onclick = load; $("userQ").addEventListener("keydown", e => e.key === "Enter" && load());
-$("wdStatus").onchange = load; $("dpStatus").onchange = load;
-
-function start() { showApp(true); load(); clearInterval(timer); timer = setInterval(() => { if (!document.hidden && tab === "overview") load(); }, 20000); }
-if (token) start();
-</script>
+  <script>
+    // تحويل تلقائي، مع إمكانية إيقافه بإضافة ?stay بنهاية الرابط
+    if (!location.search.includes("stay")) setTimeout(() => location.replace(document.getElementById("go").href), 800);
+  </script>
 </body>
 </html>
