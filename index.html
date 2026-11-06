@@ -237,6 +237,7 @@ td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
     <button class="navbtn" data-page="pending"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg> قيد المراجعة <span class="badge" id="pendBadge">0</span></button>
 
     <div class="navlabel">البوت</div>
+    <button class="navbtn" data-page="numbers"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 10h18M7 15h4"/></svg> أرقام الإيداع</button>
     <button class="navbtn" data-page="line"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg> الخط والتوكن</button>
     <button class="navbtn" data-page="settings"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/></svg> الإعدادات</button>
     <button class="navbtn" data-page="log"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h14v18l-7-3-7 3z"/><path d="M9 8h6M9 12h6"/></svg> السجل</button>
@@ -341,6 +342,26 @@ td.num{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px}
             <tbody></tbody>
           </table></div>
           <div class="empty" id="pendEmpty" style="display:none">ماكو عمليات معلقة ✅</div>
+        </div>
+      </section>
+
+      <!-- ===== Deposit numbers ===== -->
+      <section class="page" id="page-numbers">
+        <div class="page-head">
+          <div><h1>أرقام الإيداع</h1><p>الأرقام اللي يحوّل عليها الزبون — يعرضها البوت ويستلم عليها</p></div>
+          <div class="actions"><button class="btn primary" id="addNumBtn">＋ إضافة رقم</button></div>
+        </div>
+        <div class="tablewrap">
+          <div class="tabletools">
+            <span class="chip filter on" data-f="all" data-g="numbers">الكل</span>
+            <span class="chip filter" data-f="active" data-g="numbers">مفعّل</span>
+            <span class="chip filter" data-f="off" data-g="numbers">معطّل</span>
+          </div>
+          <div class="scroll"><table id="numsTable">
+            <thead><tr><th>الاسم</th><th>الرقم</th><th>النوع</th><th>ملاحظة</th><th>الحالة</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table></div>
+          <div class="empty" id="numsEmpty" style="display:none">ماكو أرقام بعد — اضغط «إضافة رقم».</div>
         </div>
       </section>
 
@@ -469,6 +490,7 @@ const seed = {
       {id:115,uid:1994550088,name:"سجاد ن",card:"5540",val:10000,cred:10000,status:"ok",t:"10:20"},
       {id:114,uid:1493611116,name:"علي حسن",card:"9003",val:5000,cred:5000,status:"ok",t:"09:51"}
     ],
+    numbers:[],
     log:[
       {t:"11:23",ev:"بطاقة للمراجعة",d:"علي حسن — ...0964"},
       {t:"11:05",ev:"شحن ناجح",d:"زينب م — 25,000"},
@@ -486,6 +508,11 @@ const seed = {
     tx:[
       {id:52,uid:1555000111,name:"كرار ت",card:"زين كاش",val:50000,cred:50000,status:"ok",t:"10:40"},
       {id:51,uid:1493611116,name:"علي حسن",card:"ماستر",val:25000,cred:25000,status:"pending",t:"09:30"}
+    ],
+    numbers:[
+      {id:1,label:"الرقم الرئيسي",number:"07701234567",type:"زين كاش",note:"حوالات فورية",active:true},
+      {id:2,label:"رقم احتياط",number:"07809876543",type:"آسيا حوالة",note:"",active:true},
+      {id:3,label:"ماستر كارد",number:"5123 **** **** 4567",type:"ماستر كارد",note:"للمبالغ الكبيرة",active:false}
     ],
     log:[{t:"10:40",ev:"إيداع ناجح",d:"كرار ت — 50,000"}]
   }
@@ -510,6 +537,10 @@ function demoPost(path, body){
   if(action==="resolve"){ const t=d.tx.find(t=>t.id===body.id); if(t){t.status="ok";t.val=body.amount;t.cred=Math.round(body.amount*(100-d.settings.fee)/100);
       const u=d.users.find(u=>u.id===t.uid); if(u)u.bal+=t.cred;} }
   if(action==="reject"){ const t=d.tx.find(t=>t.id===body.id); if(t)t.status="failed"; }
+  if(action==="num-add"){ d.numbers=d.numbers||[]; const nid=(Math.max(0,...d.numbers.map(n=>n.id))+1); d.numbers.push({id:nid,active:true,note:"",...body}); }
+  if(action==="num-edit"){ const n=(d.numbers||[]).find(n=>n.id===body.id); if(n) Object.assign(n, body); }
+  if(action==="num-del"){ d.numbers=(d.numbers||[]).filter(n=>n.id!==body.id); }
+  if(action==="num-toggle"){ const n=(d.numbers||[]).find(n=>n.id===body.id); if(n) n.active=!n.active; }
   saveFor(bot, d);
   return Promise.resolve({ok:true});
 }
@@ -519,8 +550,8 @@ function demoPost(path, body){
    ============================================================ */
 const $ = s=>document.querySelector(s), $$ = s=>[...document.querySelectorAll(s)];
 let BOT = "asia";
-let state = {users:[],tx:[],log:[],settings:{},line:{}};
-let filters = {users:"all", tx:"all"};
+let state = {users:[],tx:[],log:[],settings:{},line:{},numbers:[]};
+let filters = {users:"all", tx:"all", numbers:"all"};
 let selected = new Set();
 
 const money = n => (n==null?"—":Number(n).toLocaleString("en-US"));
@@ -534,11 +565,11 @@ function toast(msg, err){
 
 async function loadAll(){
   try{
-    const [users,tx,log,settings,line] = await Promise.all([
+    const [users,tx,log,settings,line,numbers] = await Promise.all([
       api.get(`/${BOT}/users`), api.get(`/${BOT}/tx`), api.get(`/${BOT}/log`),
-      api.get(`/${BOT}/settings`), api.get(`/${BOT}/line`)
+      api.get(`/${BOT}/settings`), api.get(`/${BOT}/line`), api.get(`/${BOT}/numbers`)
     ]);
-    state={users,tx,log,settings,line}; selected.clear();
+    state={users,tx,log,settings,line,numbers:numbers||[]}; selected.clear();
     renderAll(); setConn(true);
   }catch(e){ setConn(false); toast("فشل الاتصال بالباك إند: "+e.message, true); }
 }
@@ -549,7 +580,7 @@ function setConn(on){
   $("#footLine").textContent = "آخر تحديث: "+new Date().toLocaleTimeString("ar-IQ",{hour:'2-digit',minute:'2-digit'});
 }
 
-function renderAll(){ renderStats(); renderRecent(); renderUsers(); renderTx(); renderPending(); renderLine(); renderSettings(); renderLog(); }
+function renderAll(){ renderStats(); renderRecent(); renderUsers(); renderTx(); renderPending(); renderNumbers(); renderLine(); renderSettings(); renderLog(); }
 
 function renderStats(){
   const u=state.users, tx=state.tx;
@@ -632,6 +663,64 @@ function renderPending(){
     </div></td></tr>`).join("");
 }
 
+const NUM_TYPES=["زين كاش","آسيا حوالة","ماستر كارد","سوبر كي","فاستباي","حساب بنكي","أخرى"];
+function renderNumbers(){
+  let list=state.numbers||[];
+  if(filters.numbers==="active") list=list.filter(n=>n.active);
+  if(filters.numbers==="off") list=list.filter(n=>!n.active);
+  const q=$("#globalSearch").value.trim();
+  if(q) list=list.filter(n=>(n.label+n.number+n.type+(n.note||"")).includes(q));
+  $("#numsEmpty").style.display=list.length?"none":"block";
+  $("#numsTable").style.display=list.length?"":"none";
+  $("#numsTable tbody").innerHTML=list.map(n=>`
+    <tr>
+      <td style="font-weight:600">${esc(n.label)}</td>
+      <td class="num">${esc(n.number)}</td>
+      <td><span class="pill proc">${esc(n.type)}</span></td>
+      <td class="sub">${esc(n.note||"—")}</td>
+      <td>${n.active?'<span class="pill ok">مفعّل</span>':'<span class="pill fail">معطّل</span>'}</td>
+      <td><div class="rowact">
+        <button class="mini" onclick="editNum(${n.id})">تعديل</button>
+        <button class="mini ${n.active?'d':'g'}" onclick="toggleNum(${n.id})">${n.active?'تعطيل':'تفعيل'}</button>
+        <button class="mini d" onclick="delNum(${n.id})">حذف</button>
+      </div></td>
+    </tr>`).join("");
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function numForm(n){
+  n=n||{label:"",number:"",type:NUM_TYPES[0],note:"",active:true};
+  return `
+   <div class="field"><label>الاسم / التسمية</label><input id="nLabel" value="${esc(n.label)}" placeholder="مثال: الرقم الرئيسي"></div>
+   <div class="field" style="margin-top:12px"><label>الرقم</label><input id="nNumber" value="${esc(n.number)}" placeholder="07701234567"></div>
+   <div class="field" style="margin-top:12px"><label>النوع</label><select id="nType">
+     ${NUM_TYPES.map(t=>`<option ${t===n.type?'selected':''}>${t}</option>`).join("")}</select></div>
+   <div class="field" style="margin-top:12px"><label>ملاحظة (اختياري)</label><input id="nNote" value="${esc(n.note||'')}" placeholder="تظهر للزبون"></div>`;
+}
+window.editNum = id=>{
+  const n=state.numbers.find(x=>x.id===id);
+  openModal("تعديل رقم","عدّل بيانات الرقم", numForm(n), async ()=>submitNum(id));
+};
+$("#addNumBtn") && ($("#addNumBtn").onclick=()=>{
+  openModal("إضافة رقم","أضف رقم استلام جديد لبوت الإيداع", numForm(), async ()=>submitNum(null));
+});
+async function submitNum(id){
+  const body={
+    label:$("#nLabel").value.trim(), number:$("#nNumber").value.trim(),
+    type:$("#nType").value, note:$("#nNote").value.trim()
+  };
+  if(!body.label || !body.number){ toast("اكتب الاسم والرقم",true); return false; }
+  if(id){ await api.post(`/${BOT}/num-edit`,{id,...body}); toast("انحفظ التعديل"); }
+  else{ await api.post(`/${BOT}/num-add`,body); toast("انضاف الرقم"); }
+  await loadAll(); return true;
+}
+window.toggleNum = async id=>{ await api.post(`/${BOT}/num-toggle`,{id}); await loadAll(); };
+window.delNum = id=>{
+  openModal("حذف رقم","متأكد تريد تحذف هذا الرقم؟ ما راح يظهر للزبائن بعدها.","",
+    async ()=>{ await api.post(`/${BOT}/num-del`,{id}); toast("انحذف الرقم"); await loadAll(); return true; });
+  $("#mOk").className="btn danger"; $("#mOk").textContent="حذف";
+};
+
 function renderLine(){
   const l=state.line;
   $("#lnPhone").textContent=l.phone; $("#lnToken").textContent=l.token;
@@ -694,6 +783,7 @@ window.rejectTx = async id=>{
 let modalOk=null;
 function openModal(title,desc,body,onOk){
   $("#mTitle").textContent=title; $("#mDesc").textContent=desc; $("#mBody").innerHTML=body;
+  $("#mOk").className="btn primary"; $("#mOk").textContent="تأكيد";
   modalOk=onOk; $("#modal").classList.add("show");
   const f=$("#mBody input"); if(f) setTimeout(()=>f.focus(),50);
 }
@@ -721,7 +811,7 @@ $$("#botswitch button").forEach(b=>b.onclick=async ()=>{
 $$(".chip.filter").forEach(c=>c.onclick=()=>{
   const g=c.dataset.g;
   $$(`.chip.filter[data-g="${g}"]`).forEach(x=>x.classList.remove("on")); c.classList.add("on");
-  filters[g]=c.dataset.f; g==="users"?renderUsers():renderTx();
+  filters[g]=c.dataset.f; ({users:renderUsers,tx:renderTx,numbers:renderNumbers}[g]||renderTx)();
 });
 
 /* ===== checkboxes ===== */
@@ -738,7 +828,7 @@ $("#bulkBan").onclick=async ()=>{ await api.post(`/${BOT}/ban`,{ids:[...selected
 $("#bulkUnban").onclick=async ()=>{ await api.post(`/${BOT}/ban`,{ids:[...selected],banned:false}); toast("تم رفع الحظر"); await loadAll(); };
 
 /* ===== search ===== */
-$("#globalSearch").oninput=()=>{ renderUsers(); renderTx(); };
+$("#globalSearch").oninput=()=>{ renderUsers(); renderTx(); renderNumbers(); };
 
 /* ===== settings ===== */
 $$("#page-settings .toggle").forEach(t=>t.onclick=()=>t.classList.toggle("on"));
